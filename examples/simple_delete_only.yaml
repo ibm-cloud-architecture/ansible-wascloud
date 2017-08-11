@@ -1,0 +1,18 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: False
+  vars_files: 
+  - ../bluemix-vars.yaml
+
+  tasks:
+
+  - name: create instance
+    wascloud_instance:
+      state: absent
+      name: "{{ was_instance_name }}"
+      region: "{{ region }}"
+      org: "{{ org }}"
+      space: "{{ space }}"
+      apikey: "{{ apikey }}"
+    register: was_instance

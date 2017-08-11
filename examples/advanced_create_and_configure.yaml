@@ -1,0 +1,54 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: False
+  vars_files: 
+  - ../bluemix-vars.yaml
+
+  tasks:
+
+  - name: create instance
+    wascloud_instance:
+      state: latest
+      name: "{{ was_instance_name }}"
+      instance_type: WASBase
+      size: s
+      region: "{{ region }}"
+      org: "{{ org }}"
+      space: "{{ space }}"
+      apikey: "{{ apikey }}"
+      wait: True
+    register: was_instance
+  
+  - name: Add new instance to host group
+    add_host:
+      hostname: "{{ item.osHostname }}"
+      groupname: launched
+      ansible_user: "{{ item.osAdminUser }}"
+      ansible_ssh_pass: "{{ item.osAdminPassword }}"
+      ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o PreferredAuthentications=password -o PubkeyAuthentication=no"
+      wasadmin: "{{ item.wasAdminUser }}"
+      wasadminpass: "{{ item.wasAdminPass }}"
+    with_items: "{{ was_instance.resources }}"
+  - name: Wait for ssh to become available
+    wait_for:
+      host: "{{ item.osHostname }}"
+      port: 22
+      sleep: 2
+      timeout: 300
+      state: started
+    with_items: "{{ was_instance.resources }}"
+
+    
+- hosts: launched
+  gather_facts: True
+  vars_files: 
+  - db-vars.yaml
+
+  tasks:
+    
+  - name: Copy websphere configuration script
+    template: src=templates/setupWasProfile.j2 dest=/tmp/setupWasProfile.py
+    
+  - name: Run configuration script
+    command: /opt/IBM/WebSphere/Profiles/DefaultAppSrv01/bin/wsadmin.sh -lang jython -user {{ wasadmin }} -password {{ wasadminpass }} -f /tmp/setupWasProfile.py

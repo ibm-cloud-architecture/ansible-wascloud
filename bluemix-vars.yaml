@@ -1,0 +1,6 @@
+was_instance_name: my_test_instance
+region: ng
+org: <insert_bluemix_region_here_ng_eu-gb-etc>
+space: <insert_bluemix_space_here>
+apikey: <insert api key here>
+

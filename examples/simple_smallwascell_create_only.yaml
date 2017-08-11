@@ -1,0 +1,24 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: False
+  vars_files: 
+  - ../bluemix-vars.yaml
+
+  tasks:
+
+  - name: create instance
+    wasbm_instance:
+      state: present
+      name: "{{ wasb_instance_name }}"
+      instance_type: WASCell
+      size: s                 # tshirt size of application server VMs
+      app_vms: 2              # Number of application server VMs
+      controller_size: s      # tshirt size of controller VM
+      software_level: 8.5.5
+      region: "{{ region }}"
+      org: "{{ org }}"
+      space: "{{ space }}"
+      apikey: "{{ apikey }}"
+      wait: no
+    register: wasbm_instance

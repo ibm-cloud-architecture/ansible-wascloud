@@ -1,0 +1,5 @@
+dbuser: db2inst1
+dbpass: somethingrandom
+dbhost: my.db2.host.com
+dbport: 2231
+
