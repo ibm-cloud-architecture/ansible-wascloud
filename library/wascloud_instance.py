@@ -1,5 +1,3 @@
-from __future__ import print_function
-from builtins import object
 from ansible.module_utils.basic import *
 import time
 
@@ -208,7 +206,7 @@ class BluemixAPI(object):
       self.access_token = r.json()['uaa_token']
       self.refresh_token = r.json()['uaa_refresh_token']
     else:
-      print(r.text)
+      return False
   
   def get_token(self):
     if self.access_token == '':
@@ -271,9 +269,7 @@ class WASaaSAPI(object):
     url = self.baseUrl + '/organizations/%s/spaces/%s/serviceinstances/%s/resources' % (self.org, self.space, self.sid)
     r = requests.get(url, headers=self._headers)
     if r.status_code != 200:
-      print('Error retrieving service instances. ')
-      print('Server returned status code: %s' % r.status_code)
-      print(r.text)
+      # TODO: Implement some failure handling
       return False   
     
     if len(r.json()) >= 1:
@@ -301,9 +297,7 @@ class WASaaSAPI(object):
     url = self.baseUrl + '/organizations/%s/spaces/%s/serviceinstances/%s/vpnconfig' % (self.org, self.space, self.sid)
     r = requests.get(url, headers=self._headers)
     if r.status_code != 200:
-      print('Error retrieving service instance vpn configuration. ')
-      print('Server returned status code: %s' % r.status_code)
-      print(r.text)
+      # TODO Implement some error handling
       return False   
     
     return r.json()['VpnConfig']
@@ -347,7 +341,7 @@ class WASaaSAPI(object):
 
       # Ensure this is basic WAS as we don't support ND cluster yet
       if si['ServiceInstance']['ServiceType'] != 'WASBase':
-        print("Don't support the service instance type %s " % si['ServiceInstance']['ServiceType'])
+        # print("Don't support the service instance type %s " % si['ServiceInstance']['ServiceType'])
         return False
       
       self.sid = si['ServiceInstance']['ServiceInstanceID']
@@ -374,9 +368,10 @@ class WASaaSAPI(object):
         return False
       if r.status_code != 200:
         # Catch everything else
-        print('Error retrieving service instances. ')
-        print('Server returned status code: %s' % r.status_code)
-        print(r.text)
+        # TODO Implement some error handling
+        #print('Error retrieving service instances. ')
+        #print('Server returned status code: %s' % r.status_code)
+        #print(r.text)
         return False
       return r.json()
     
@@ -411,7 +406,7 @@ class WASaaSAPI(object):
       if si['ServiceInstance']['Name'] == serviceinstance_name:
         return si['ServiceInstance']['ServiceInstanceID']
       
-    print("Could not find service instance " + serviceinstance_name)
+    # print("Could not find service instance " + serviceinstance_name)
     return False
       
   def get__resource_from_id(self,organisation, space, sid):
@@ -426,12 +421,12 @@ class WASaaSAPI(object):
         break
               
     if not serviceinstance:
-      print("Could not find service instance with name %s " % serviceinstance_name)
+      # print("Could not find service instance with name %s " % serviceinstance_name)
       return False
           
     # Ensure this is basic WAS as we don't support ND cluster yet
     if si['ServiceInstance']['ServiceType'] != 'WASBase':
-      print("Don't support the service instance type %s " % si['ServiceInstance']['ServiceType'])
+      # print("Don't support the service instance type %s " % si['ServiceInstance']['ServiceType'])
       return False
 
 
