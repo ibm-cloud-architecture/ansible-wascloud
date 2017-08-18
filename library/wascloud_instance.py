@@ -145,28 +145,7 @@ def main():
 
       resources = was.get_resources_list()
       module.exit_json(msg=message, resources=resources, **status)
-
-
-def validate_input(module):
-  
-  if module.params.get('state') == 'absent':
-    # No validation required to delete service instance
-    return True
-    
-  if module.params.get('instance_type') == 'WASBase':
-    incompatibles = ['ControlServerVMSize', 'NumberOfApplicationVMs']
-    required = ['size']
-    
-  if module.params.get('instance_type') == 'WASCell':
-    required = ['ControlServerVMSize', 'size', 'NumberOfApplicationVMs']
-    
-  
-  if module.params.get('instance_type') == 'LibertyCollective':
-    required = ['ControlServerVMSize', 'size', 'NumberOfApplicationVMs']
-    
-  return True
-
-        
+       
 import requests
 import base64
 class BluemixAPI(object):
@@ -426,22 +405,9 @@ class WASaaSAPI(object):
       if r.status_code != 200:
         # Catch everything else
         # TODO Implement some error handling
-        #print('Error retrieving service instances. ')
-        #print('Server returned status code: %s' % r.status_code)
-        #print(r.text)
         return False
       return r.json()
     
-    
-
-  def get_resource_details(self, resourceid):
-
-      url = baseUrl + '/organizations/%s/spaces/%s/serviceinstances/%s/resources/%s' % (self.org, self.space, self.sid, resourceid)
-      r = requests.get(url, headers=self._headers)
-      return r.json()
-    
-    
-
   def get_serviceinstances(self, organisation, space):
 
     url = self.baseUrl + '/organizations/%s/spaces/%s/serviceinstances' % (organisation, space)
@@ -451,42 +417,5 @@ class WASaaSAPI(object):
     else:
       return False, r.text
       
-  def get_spaces(self, organisation):
-
-    url = baseUrl + '/organizations/%s/spaces' % (organisation)
-    r = requests.get(url, headers=self._headers)
-    return r.json()
-      
-  def get_serviceinstance_id(self, organisation, space, serviceinstance_name):
-    success, serviceinstances = self.get_serviceinstances(organisation, space)    
-    for si in serviceinstances:
-      if si['ServiceInstance']['Name'] == serviceinstance_name:
-        return si['ServiceInstance']['ServiceInstanceID']
-      
-    # print("Could not find service instance " + serviceinstance_name)
-    return False
-      
-  def get__resource_from_id(self,organisation, space, sid):
-    url = baseUrl + '/organizations/%s/spaces/%s/serviceinstances/%s/resources' % (organisation, space, sid)
-
-  def get_serviceinstance_details(self, organisation, space, serviceinstance_name):
-
-    success, sis = self.get_serviceinstances(organisation, space)
-    for s in sis:
-      if s['ServiceInstance']['Name'] == serviceinstance_name:
-        si = s
-        break
-              
-    if not serviceinstance:
-      # print("Could not find service instance with name %s " % serviceinstance_name)
-      return False
-          
-    # Ensure this is basic WAS as we don't support ND cluster yet
-    if si['ServiceInstance']['ServiceType'] != 'WASBase':
-      # print("Don't support the service instance type %s " % si['ServiceInstance']['ServiceType'])
-      return False
-
-
-
 if __name__ == '__main__':
     main()
