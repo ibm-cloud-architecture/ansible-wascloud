@@ -30,6 +30,7 @@ controller_size | no |       | <ul><li>S</li><li>M</li><li>L</li><li>XL</li><li>
 app_vms     | no  |         |               | Number of Application VMs to provision. Required when type = WASCell or LibertyCollective.
 software_level | no | 9.0.0 | <ul><li>8.5.5</li><li>9.0.0</li></ul> | Software Level of WAS. Only valid for type =  WASBase, WASCell and WASNDServer
 wait        | no  | false   | <ul><li>true</li><li>false</li></ul> | Wait for newly created instance resources to be available. Valid for state = present and latest/reloaded. 
+public_ip   | no  | false   | <ul><li>true</li><li>false</li></ul> | Request and open public IP address for the instance. Will force wait for provisioning to complete.
 
 ## Examples
 ```

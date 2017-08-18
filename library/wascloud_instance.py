@@ -32,7 +32,8 @@ def main():
           region        = dict(required=True),
           org           = dict(required=True),
           space         = dict(required=True),
-          apikey        = dict(required=True)
+          apikey        = dict(required=True),
+          public_ip     = dict(required=False, default=False, type='bool')
       ),
 
       required_if       = [
@@ -52,6 +53,7 @@ def main():
   size          = module.params['size']
   software_level= module.params['software_level']
   wait          = module.params['wait']
+  public_ip     = module.params['public_ip']
   
   # Get authorizatin token from Bluemix
   bx = BluemixAPI(region_key = regionKey, apiKey = apiKey)
@@ -92,6 +94,7 @@ def main():
 
   # The instance creation part of the task  
   if state in ['present', 'latest', 'reloaded']:
+    status['debug_create_reached'] = True
 
     if was.instance_exists():
       
@@ -100,6 +103,8 @@ def main():
         # Wait for it to be properly deleted.
         while was.instance_exists():
           time.sleep(10)
+        # Some times details from the old instance can remain. Reset.
+        was.reset_instance_object()
       else:
         # In state present we just return the resources list
         resources = was.get_resources_list()
@@ -120,39 +125,27 @@ def main():
       if module.params.get('software_level'):
         instance_config['software_level'] = module.params.get('software_level')
 
+    if public_ip:
+      # Force wait
+      wait = True
+
     resources = []
     success, message = was.create_instance(instance_config, wait_until_ready=wait)
     if not success:
+      status['fail_message'] = message
       module.fail_json(msg=message, **status)
     else:
+      status['changed'] = True
+      if public_ip:
+        success, message = was.request_public_ip()
+        if success:
+          status['public_ip'] = message
+        else:
+          module.fail_json(msg=message, **status)
+
       resources = was.get_resources_list()
       module.exit_json(msg=message, resources=resources, **status)
 
-
-'''
-  if state == 'present':
-    # Check if exists
-    if was.instance_exists():
-      resources = was.get_resources_list()
-      module.exit_json(msg='Instance by that name already exists', changed=False, resources=resources)
-
-    success, message = was.create_instance(instance_config, wait_until_ready=wait)
-    resources = was.get_resources_list()
-    # Create a new instance, and grab the virtuser ssh certificate
-    module.exit_json(msg=message, changed=success, resources=resources)
-    
-  if state == 'latest' or state == 'reloaded':
-    if was.instance_exists():
-      was.delete_instance()
-      was.sid = ''
-    
-    success, message = was.create_instance(instance_config, wait_until_ready=wait)
-    if not success:
-      module.fail_json(msg=message)
-    else:
-      resources = was.get_resources_list()
-      module.exit_json(msg=message, changed=success, resources=resources)
-'''
 
 def validate_input(module):
   
@@ -233,6 +226,7 @@ class WASaaSAPI(object):
     self.appserver_size = ''
     self.instance_type = ''
     self.software_level = ''
+    self.public_ip = ''
     # Available Environments:
     # Dallas - https://wasaas-broker.ng.bluemix.net/wasaas-broker/api/v1
     # London - https://wasaas-broker.eu-gb.bluemix.net/wasaas-broker/api/v1
@@ -262,9 +256,61 @@ class WASaaSAPI(object):
         return True, 'Instance requested'
       else:
         while not self.instance_ready():
-          time.sleep(10)
+          time.sleep(30)
         return True, 'Instance ready'
+
+  def request_public_ip(self):
+    if len(self.resources_raw) == 0:
+      self.fetch_resource_details()
+    
+    if len(self.resources_raw) == 1:
+      primary_host_id = self.resources_raw[0]['WASaaSResourceID']
+    else:
+      primary_host_id = self.get_primary_host_id()
+
+    if not primary_host_id:
+      return False, 'Failed to find a primary host'
       
+    # Request the IP
+    url = self.baseUrl + '/organizations/%s/spaces/%s/serviceinstances/%s/resources/%s?action=requestip' % (self.org, self.space, self.sid, primary_host_id)
+    r = requests.put(url, headers=self._headers)
+    if r.status_code != 200:
+      return False, str(r.status_code)
+    
+    # Open the IP
+    url = self.baseUrl + '/organizations/%s/spaces/%s/serviceinstances/%s/resources/%s?action=openip' % (self.org, self.space, self.sid, primary_host_id)
+    r = requests.put(url, headers=self._headers)
+    if r.status_code != 200:
+      return False, str(r.status_code)
+    
+    
+    # Query primary host for IP
+    url = self.baseUrl + '/organizations/%s/spaces/%s/serviceinstances/%s/resources/%s' % (self.org, self.space, self.sid, primary_host_id)
+    resources = {}
+    attempts = 0
+    while 'publicIpInfo' not in resources:
+        time.sleep(5)
+        r = requests.get(url, headers=self._headers)
+        if r.status_code == 200:
+          resources = r.json()
+        attempts += 1
+        if attempts == 100:
+          return False, "Failed to get public IP information"
+    
+    public_ip = ''
+    if 'publicIpInfo' in resources:
+      if 'publicIp' in resources['publicIpInfo']:
+        public_ip = resources['publicIpInfo']['publicIp']
+        self.public_ip = public_ip
+        
+    return True, public_ip
+
+  def get_primary_host_id(self):
+    for r in self.resources_raw:
+      if 'waslink' in r:
+        return r['WASaaSResourceID']
+    return False
+
   def instance_ready(self):
     url = self.baseUrl + '/organizations/%s/spaces/%s/serviceinstances/%s/resources' % (self.org, self.space, self.sid)
     r = requests.get(url, headers=self._headers)
@@ -276,7 +322,7 @@ class WASaaSAPI(object):
       return True
     else:
       return False
-    
+
   def delete_instance(self):
     if self.sid == '':
       self.fetch_resource_details()
@@ -285,6 +331,7 @@ class WASaaSAPI(object):
     r = requests.delete(url, headers=self._headers)
     if r.status_code == 204:
       self.sid = ''
+      self.resources_raw = []
       return True, 'Instance deleted'
     else:
       return False, r.text
@@ -310,6 +357,16 @@ class WASaaSAPI(object):
     else:
       return False, message
 
+  def reset_instance_object(self):
+    self.sid = ''
+    self.resources_raw = []
+    self.adminip = ''
+    self.wsadmin_user = ''
+    self.wsadmin_pass = ''
+    self.vpnConfig_link = ''
+    self.appserver_size = ''
+    self.instance_type = ''
+    self.software_level = ''
 
   def instance_exists(self):
     success, sis = self.get_serviceinstances(self.org, self.space)
