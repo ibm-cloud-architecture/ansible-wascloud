@@ -101,7 +101,7 @@ name | description      | returned  | type  | sample
 -----|------------------|-----------|-------|-------
 instance_deleted | Whether an instance was deleted during the task run | always | boolen | 
 resources | information about the VM(s) of the WAS Service instance. If the service instance is not ready an empty list is returned. | always | list of dicts |  [<br />{<br />"WASaaSResourceID": "33a7f6d1-f33e-439b-98d9-ce4412e48591", <br />"creationTime": "08-10-2017 22:33:18", <br />"disk": 12.0, <br />"expireTime": null, <br />"ifixinfo": [], <br />"keyStorePassword": "p9N2ZmXf", <br />"machinename": "tWAS Base (RHEL 6.8, WebSphere 9004 and JDK 8) 17.13", <br />"machinestatus": "RUNNING", <br />"memory": 2048, <br />"osAdminPassword": "aa58786a", <br />"osAdminUser": "root", <br />"osHostname": "169.44.39.132",  <br />"osType": "RHEL 6.8 X64", <br />"vcpu": 1, <br />"virtuserPrivateSshKey": "-----BEGIN RSA PRIVATE KEY-----privatekeystring==\n-----END RSA PRIVATE KEY-----\n", <br />"vpnConfigLink": "https://wasaas-broker.ng.bluemix.net:443/wasaas-broker/consumerPortal/openvpn/openvpnConfig.zip", <br />"wasAdminPass": "ed85b817", <br />"wasAdminUser": "wsadmin", <br />"waslink": "http://169.44.39.132:9060/ibm/console"<br />}<br />]<br />
-
+public_ip | The public IP address for the service instance | When public_ip is set to True in playbook | string | 
 
 
 
