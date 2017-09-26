@@ -219,6 +219,7 @@ class WASaaSAPI(object):
         }
         self.baseUrl = regions[self.regionKey]
         self._headers={
+          'User-Agent': 'ansible-wascloud 1.0',
           'authorization': self.token,
           'Accept': 'application/json'
         }
