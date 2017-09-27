@@ -1,9 +1,89 @@
-from ansible.module_utils.basic import *
-import time
+#!/usr/bin/python
+# Copyright (c) 2017 Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+ANSIBLE_METADATA = {'metadata_version': '1.1',
+                    'status': ['preview'],
+                    'supported_by': 'community'}
 
-"""
+DOCUMENTATION = '''
+---
+module: wascloud_instance
+short_description: create, update or cancel an instance of WebSphere on Cloud
+description:
+  - Creates, updates or cancels WebSphere on Cloud instances. When created, optionally waits for it to be 'running'.
+version_added: "2.4"
+options:
+  state:
+    description:
+      - Create, update or cancel instances
+    required: false
+    default: 'present'
+    choices: ['present', 'absent', 'latest', 'reloaded']
+  name:
+    description:
+      - Name of the WAS instance to be created, updated or cancelled
+    required: true
+  wait:
+    description:
+      - Whether to wait for instance creation to complete before continuing. Must be true to return instance details
+    required: false
+    default: false
+  instance_type:
+    description:
+      - Type of WebSphere instance to create. Required when creating or reloading instance, but not when cancelling instance
+      - Valid options when creating: ['LibertyCollective', 'LibertyCore', 'LibertyNDServer', 'WASBase', 'WASCell', 'WASNDServer']
+    required: false
+  size:
+    description:
+      - T-Shirt size of WebSphere instance.
+      - Required when creating new instance, but not when cancelling instance
+    required: false
+  app_vms:
+    description:
+      - Number of application server VMs in a WAS Cell or Liberty Collective
+      - Required when provisioning new WAS Cell or Liberty Collective only
+    required: false
+    type: 'int'
+  controller_size:
+    description:
+      - T-Shirt size of controller VM in WAS Cell or Liberty Collective
+      - Required only when provisioning new WAS Cell or Liberty Collective
+    required: false
+  software_level:
+    description:
+      - Version of Websphere to provision. If left blank when provisioning the latest version available will be selected by the WAS Broker
+    required: false
+  region:
+    description:
+      - Bluemix region to provision to. 
+    required: true
+  org:
+    description:
+      - Bluemix organisation to authenticate and provision to
+    required: true
+  space:
+    description:
+      - Bluemix space to authenticate and provision to
+    required: true
+  apikey:
+    description:
+      - Bluemix API Key to authenticate with
+    required: true
+  public_ip:
+    description:
+      - Whether to request a public ip address when creating an instance
+    required: false
+    default: false
+requirements:
+    - "python >= 2.7"
+    - "requests >= "2.11.0"
+author: "Hans Kristian Moen (@hassenius)"
+'''
+
+EXAMPLES = '''
+---
 Example usage:
-  wasbm_instance:
+  wascloud_instance:
     state: present
     name: temp_dev_env
     instance_type: WASBase (valid options ['LibertyCollective', 'LibertyCore', 'LibertyNDServer', 'WASBase', 'WASCell', 'WASNDServer']
@@ -13,10 +93,39 @@ Example usage:
     space: <bluemix_space>
     apikey: <bluemix api key>
     wait: True
-  register: wasbm_instace
+  register: was_instace
 
-"""
+'''
 
+RETURN = '''
+instance_deleted:
+  description: Whether an instance was deleted during the task run 
+  returned: always
+  type: boolean 
+resources:
+  description: List of resources in the WAS service instance. If the service instance is not ready an empty list is returned
+  returned: always 
+  type: complex
+  contains:
+    resource_dictionary:
+      description: information about the VM(s) of the WAS Service instance. 
+      type: dict
+      sample: {"WASaaSResourceID": "33a7f6d1-f33e-439b-98d9-ce4412e48591","creationTime": "08-10-2017 22:33:18", "disk": 12.0,"expireTime": null, <br />"ifixinfo": [],"keyStorePassword": "p9N2ZmXf","machinename": "tWAS Base (RHEL 6.8, WebSphere 9004 and JDK 8) 17.13", "machinestatus": "RUNNING","memory": 2048,"osAdminPassword": "aa58786a", "osAdminUser": "root", "osHostname": "169.44.39.132",  "osType": "RHEL 6.8 X64","vcpu": 1, "virtuserPrivateSshKey": "-----BEGIN RSA PRIVATE KEY-----privatekeystring==\n-----END RSA PRIVATE KEY-----\n", "vpnConfigLink": "https://wasaas-broker.ng.bluemix.net:443/wasaas-broker/consumerPortal/openvpn/openvpnConfig.zip", "wasAdminPass": "ed85b817", "wasAdminUser": "wsadmin", "waslink": "http://169.44.39.132:9060/ibm/console"}
+public_ip:
+  description: The public IP address for the service instance
+  returned: When public_ip is set to True in playbook
+  type: string 
+'''
+
+from ansible.module_utils.basic import *
+import time
+import base64
+
+try:
+    import requests
+    HAS_REQUESTS = True
+except ImportError:
+    HAS_REQUESTS = False
 
 def main():
     module = AnsibleModule(
@@ -54,6 +163,9 @@ def main():
     software_level= module.params['software_level']
     wait          = module.params['wait']
     public_ip     = module.params['public_ip']
+
+    if not HAS_REQUESTS:
+      module.fail_json(msg='python requests package required for this module')
 
     # Get authorizatin token from Bluemix
     bx = BluemixAPI(region_key = regionKey, apiKey = apiKey)
@@ -146,8 +258,7 @@ def main():
             resources = was.get_resources_list()
             module.exit_json(msg=message, resources=resources, **status)
 
-import requests
-import base64
+
 class BluemixAPI(object):
 
     def __init__(self, region_key, apiKey):
@@ -186,7 +297,6 @@ class BluemixAPI(object):
 
         return self.access_token
 
-import requests
 
 class WASaaSAPI(object):
 
