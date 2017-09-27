@@ -117,7 +117,7 @@ public_ip:
   type: string 
 '''
 
-from module_utils.basic import AnsibleModule
+from ansible.module_utils.basic import AnsibleModule
 import time
 import base64
 
