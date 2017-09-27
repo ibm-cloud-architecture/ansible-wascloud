@@ -31,17 +31,17 @@ options:
   instance_type:
     description:
       - Type of WebSphere instance to create. Required when creating or reloading instance, but not when cancelling instance
-      - Valid options when creating: ['LibertyCollective', 'LibertyCore', 'LibertyNDServer', 'WASBase', 'WASCell', 'WASNDServer']
+      - Valid options when creating: C('LibertyCollective', 'LibertyCore', 'LibertyNDServer', 'WASBase', 'WASCell', 'WASNDServer')
     required: false
   size:
     description:
       - T-Shirt size of WebSphere instance.
-      - Required when creating new instance, but not when cancelling instance
+      - Required if I(state==present/latest/reloaded)when creating new instance, but not when cancelling instance
     required: false
   app_vms:
     description:
       - Number of application server VMs in a WAS Cell or Liberty Collective
-      - Required when provisioning new WAS Cell or Liberty Collective only
+      - Required if I(instance_type==WASCell/LibertyCollective)
     required: false
     type: 'int'
   controller_size:
@@ -86,7 +86,7 @@ Example usage:
   wascloud_instance:
     state: present
     name: temp_dev_env
-    instance_type: WASBase (valid options ['LibertyCollective', 'LibertyCore', 'LibertyNDServer', 'WASBase', 'WASCell', 'WASNDServer']
+    instance_type: WASBase
     size: M
     region: <bluemix_region>
     org: <bluemix_org>
@@ -117,7 +117,7 @@ public_ip:
   type: string 
 '''
 
-from ansible.module_utils.basic import *
+from module_utils.basic import AnsibleModule
 import time
 import base64
 
