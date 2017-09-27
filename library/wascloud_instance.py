@@ -11,6 +11,7 @@ module: wascloud_instance
 short_description: create, update or cancel an instance of WebSphere on Cloud
 description:
   - Creates, updates or cancels WebSphere on Cloud instances. When created, optionally waits for it to be 'running'.
+  - More information about WebSphere on Cloud in IBM Marketplace U(https://www.ibm.com/us-en/marketplace/application-server-on-cloud)
 version_added: "2.4"
 options:
   state:
